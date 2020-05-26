@@ -1,0 +1,294 @@
+<?php
+
+namespace ProcessWire;
+
+class InputfieldHCaptcha extends Inputfield
+{
+    /** @var string The name of the POST field containing the hCaptcha response. */
+    public const HCAPTCHA_POST_KEY = 'h-captcha-response';
+
+    /** @var string The hCaptcha API to call to verify responses. */
+    public const HCAPTCHA_ENDPOINT = 'https://hcaptcha.com/siteverify';
+
+    /** @var string Name of the system log used by this module. */
+    public const LOG_NAME = 'hcaptcha';
+
+    /** @var string Configuration name for the hCaptcha secret key. */
+    public const CONFIG_NAME_SECRET_KEY = 'hCaptchaSecretKey';
+
+    /** @var string Configuration name for the hCaptcha site key. */
+    public const CONFIG_NAME_SITE_KEY = 'hCaptchaSiteKey';
+
+    /** @var string Static variable to keep track of whether the hCaptcha script was included already. */
+    public static $hCaptchaScriptAdded = false;
+
+    public static function getModuleInfo()
+    {
+        return [
+            'title' => __('hCaptcha'),
+            'summary' => __('Inputfield wrapper for the hCaptcha captcha provider.'),
+            'author' => "Moritz L'Hoest",
+            'href' => 'https://github.com/MoritzLost/InputfieldHCaptcha',
+            'version' => '0.1.0',
+            'icon' => 'check-square',
+            'autoload' => false,
+            'singular' => false,
+            'requires' => [
+                'PHP>=7.2',
+            ],
+        ];
+    }
+
+    /**
+    * Render the inputfield. This outputs the hCaptcha div. The external hCaptcha
+    * script is only included once.
+    * @return string
+    */
+    public function ___render()
+    {
+        // don't render the label if that option is clicked
+        $this->set('skipLabel', $this->get('hideLabel') ? Inputfield::skipLabelMarkup : Inputfield::skipLabelFor);
+        $output = '';
+        // the hCaptcha script should be added only once, so we check this through a static property
+        // @TODO: this might not work in all situations, maybe make this configurable through the module?
+        if (!self::$hCaptchaScriptAdded) {
+            $options = $this->getScriptOptions();
+            $parameters = $options ? '?' . http_build_query($options) : '';
+            $output .= '<script src="https://hcaptcha.com/1/api.js' . $parameters . '" defer></script>';
+            self::$hCaptchaScriptAdded = true;
+        }
+        $attributes = $this->getAttributesString();
+        $output .= "<div {$attributes}></div>";
+        return $output;
+    }
+
+    /**
+     * Get the URL parameters to add to the hCaptcha external JavaScript URL.
+     * Hook this to add / overwrite the following settings (as key => value pairs):
+     * - onload
+     * - render
+     * - hl
+     *
+     * @see https://docs.hcaptcha.com/configuration
+     * @return array
+     */
+    public function ___getScriptOptions(): array
+    {
+        return [];
+    }
+
+    /**
+     * Get the hCaptcha secret key to use for the API request.
+     *
+     * @return string
+     */
+    public function ___hCaptchaSecretKey(): string
+    {
+        return $this->wire('config')->has(self::CONFIG_NAME_SECRET_KEY)
+            ? $this->wire('config')->get(self::CONFIG_NAME_SECRET_KEY)
+            : $this->get('secretkey');
+    }
+
+    /**
+     * Get the hCaptcha site key to use for the hCaptcha widget.
+     *
+     * @return string
+     */
+    public function ___hCaptchaSiteKey(): string
+    {
+        return $this->wire('config')->has(self::CONFIG_NAME_SITE_KEY)
+            ? $this->wire('config')->get(self::CONFIG_NAME_SITE_KEY)
+            : $this->get('sitekey');
+    }
+
+    /**
+     * Get the attributes for the hCaptcha widget.
+     *
+     * @return array
+     */
+    public function getAttributes(): array
+    {
+        $sitekey = $this->wire('config')->get(self::CONFIG_NAME_SITE_KEY) ?: $this->get('sitekey');
+        return [
+            'class' => 'h-captcha',
+            'data-sitekey' => $sitekey,
+            'data-theme' => $this->get('theme'),
+            'data-size' => $this->get('size'),
+            'data-tabindex' => (int) $this->get('tabindex'),
+            'data-callback' => $this->get('data-callback'),
+            'data-expired-callback' => $this->get('data-expired-callback'),
+            'data-error-callback' => $this->get('data-error-callback'),
+        ];
+    }
+
+    /**
+    * Process the input. This will check if the hCaptcha was completed
+    * successfully and add a field error if it wasn't. It already writes a log
+    * message in case of network or API errors, as well as failed verification
+    * attempts.
+    *
+    * @return $this
+    */
+    public function ___processInput(WireInputData $input)
+    {
+        $hCaptchaSecret = $this->hCaptchaSecretKey();
+        if (!$hCaptchaSecret) {
+            $this->error($this->_('hCaptcha secret key is missing.'));
+            return $this;
+        }
+
+        $hCaptchaResponse = isset($input[self::HCAPTCHA_POST_KEY]) ? $input[self::HCAPTCHA_POST_KEY] : null;
+        if (!$hCaptchaResponse) {
+            $this->error($this->_('Captcha reponse is missing. Please fill out the captcha and try again.'));
+            return $this;
+        }
+
+        $verifyRequest = new WireHttp();
+        $postData = [
+            'response' => $hCaptchaResponse,
+            'secret' => $hCaptchaSecret,
+        ];
+        if ($this->get('includeIp')) {
+            $postData['remoteip'] = $this->wire('session')->getIp();
+        }
+        $apiResponse = $verifyRequest->post(self::HCAPTCHA_ENDPOINT, $postData);
+        $result = json_decode($apiResponse, true);
+
+        if (!$result || !is_array($result)) {
+            // if json_decode fails it's probably a network or API issue
+            $this->error($this->_('hCaptcha API error. Please try again later or contact the administrator if the problem persists.'));
+            $this->wire('log')->save(self::LOG_NAME, sprintf('hCaptcha returned invalid response: %s', print_r($apiResponse, true)));
+            return $this;
+        }
+
+        $success = $result['success'] === true;
+        $timestamp = isset($result['challenge_ts']) ? $result['challenge_ts'] : date(\DATE_ATOM);
+        if ($success) {
+            $this->value = sprintf($this->_('Passed hCaptcha verification at %s'), $timestamp);
+        } else {
+            $errors = isset($result['error-codes']) ? $result['error-codes'] : [$this->_('(not provided)')];
+            $this->value = sprintf(
+                $this->_('Failed hCaptcha verification at %s'),
+                $timestamp
+            );
+            $this->error($this->_('Failed hCaptcha verification. Please try again or contact the administrator if the problem persists.'));
+            $this->wire('log')->save(self::LOG_NAME, sprintf(
+                'Failed hCaptcha verification with error code(s): %s',
+                implode(', ', $errors)
+            ));
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get the configuration fields for this inputfield.
+     *
+     * @return InputfieldWrapper
+     */
+    public function ___getConfigInputfields()
+    {
+        $config = $this->wire('config');
+
+        $fields = parent::___getConfigInputfields();
+        $removeFields = ['required', 'requiredIf', 'showIf', 'visibility', 'collapsed'];
+        foreach ($removeFields as $f) {
+            $field = $fields->getChildByName($f);
+            if ($field) {
+                $fields->remove($field);
+            }
+        }
+
+        $secretKey = $this->modules->get('InputfieldText');
+        $secretKey->name = 'secretkey';
+        $secretKey->label = $this->_('hCaptcha secret key');
+        $secretKey->description = $this->_('You can find your secret key in the [hCaptcha dashboard](https://dashboard.hcaptcha.com/settings) (requires login).');
+        $secretKey->icon = 'key';
+        if ($config->has(self::CONFIG_NAME_SECRET_KEY)) {
+            $this->set('secretkey', $config->get(self::CONFIG_NAME_SECRET_KEY));
+            $secretKey->val($config->get(self::CONFIG_NAME_SECRET_KEY));
+            $secretKey->collapsed = Inputfield::collapsedNoLocked;
+            $secretKey->notes = $this->_('This field is disabled because the secret key is provided through a `$config` variable.');
+        } else {
+            $secretKey->notes = sprintf($this->_('You can set the secret key here, or through the config like this: `$config->%s = "your-site-key"`'), self::CONFIG_NAME_SECRET_KEY);
+            $secretKey->set('required', 1);
+        }
+        $fields->append($secretKey);
+
+        $siteKey = $this->modules->get('InputfieldText');
+        $siteKey->name = 'sitekey';
+        $siteKey->label = $this->_('hCaptcha site key');
+        $siteKey->description = $this->_('You can generate a site key through the [hCaptcha dashboard](https://dashboard.hcaptcha.com/sites) (requires login).');
+        $siteKey->icon = 'key';
+        if ($config->has(self::CONFIG_NAME_SITE_KEY)) {
+            $this->set('sitekey', $config->get(self::CONFIG_NAME_SITE_KEY));
+            $siteKey->val($config->get(self::CONFIG_NAME_SITE_KEY));
+            $siteKey->collapsed = Inputfield::collapsedNoLocked;
+            $siteKey->notes = $this->_('This field is disabled because the site key is provided through a `$config` variable.');
+        } else {
+            $siteKey->notes = sprintf($this->_('You can set the site key here, or through the config like this: `$config->%s = "your-site-key"`'), self::CONFIG_NAME_SITE_KEY);
+            $siteKey->set('required', 1);
+        }
+        $fields->append($siteKey);
+
+        $hideLabel = $this->modules->get('InputfieldCheckbox');
+        $hideLabel->name = 'hideLabel';
+        $hideLabel->label = $this->_('Field label display');
+        $hideLabel->label2 = $this->_('Hide the field label');
+        $hideLabel->description = $this->_("Check this if you don't want to display the field label above the hCaptcha box.");
+        $hideLabel->icon = 'font';
+        $hideLabel->attr('autocheck', 1);
+        $fields->append($hideLabel);
+
+        $theme = $this->modules->get('InputfieldRadios');
+        $theme->name = 'theme';
+        $theme->label = $this->_('hCaptcha theme');
+        $theme->icon = 'eye';
+        $theme->setOptions(['light', 'dark'], false);
+        $theme->val('light');
+        $fields->append($theme);
+
+        $size = $this->modules->get('InputfieldRadios');
+        $size->name = 'size';
+        $size->label = $this->_('hCaptcha size');
+        $size->notes = $this->_('`invisible` captchas require a custom JavaScript callback to activate them.');
+        $size->icon = 'arrows-alt';
+        $size->setOptions(['normal', 'compact', 'invisible'], false);
+        $size->val('normal');
+        $fields->append($size);
+
+        $tabindex = $this->modules->get('InputfieldInteger');
+        $tabindex->name = 'tabindex';
+        $tabindex->label = $this->_('hCaptcha tabindex');
+        $tabindex->notes = $this->_('Default: `0`');
+        $tabindex->set('min', -1);
+        $tabindex->set('inputType', 'number');
+        $tabindex->icon = 'sort-numeric-asc';
+        $tabindex->val(0);
+        $fields->append($tabindex);
+
+        $callbackOptions = [
+            'data-callback' => $this->_('hCaptcha callback (data-callback)'),
+            'data-expired-callback' => $this->_('hCaptcha expired callback (data-expired-callback)'),
+            'data-error-callback' => $this->_('hCaptcha error callback (data-error-callback)'),
+        ];
+        foreach ($callbackOptions as $optionKey => $optionLabel) {
+            $callbackField = $this->modules->get('InputfieldText');
+            $callbackField->name = $optionKey;
+            $callbackField->label = $optionLabel;
+            $callbackField->icon = 'code';
+            $fields->append($callbackField);
+        }
+
+        $includeIp = $this->modules->get('InputfieldCheckbox');
+        $includeIp->name = 'includeIp';
+        $includeIp->label = $this->_('Include IP in requests?');
+        $includeIp->label2 = $this->_('Include the IP address');
+        $includeIp->description = $this->_("The visitor's IP address can optionally be included in the API request ([documentation](https://docs.hcaptcha.com/#server)).");
+        $includeIp->icon = 'globe';
+        $includeIp->attr('autocheck', 1);
+        $fields->append($includeIp);
+
+        return $fields;
+    }
+}
