@@ -2,6 +2,8 @@
 
 This is an inputfield module for [ProcessWire](https://processwire.com/) that displays an [hCaptcha bot protection](https://www.hcaptcha.com/) and verifies the response. It is primarily built for use with [Form Builder](https://processwire.com/store/form-builder/), but can used programmatically and inserted into any ProcessWire form, including the page edit forms.
 
+**The development of this module is sponsored by [schwarzdesign](https://www.schwarzdesign.de/).**
+
 ## Prerequisites
 
 You need an [hCaptcha account](https://dashboard.hcaptcha.com/signup) to create your API keys. You need two keys:
@@ -26,6 +28,7 @@ The most common use case for this module is as bot / spam protection in frontend
 3. After adding the field, go to the *Details* tab to configure it. The field requires your secret key and a site key, unless you have added them to your `config.php`.
 4. The other options mostly reflect the [hCaptcha Container Configuration](https://docs.hcaptcha.com/configuration), so you can change the look and feel and configure JavaScript callbacks. You can also hide the field label above the hCaptcha field.
 5. Now fill out the form in the frontend and try submitting it without filling out the captcha. You should see an error message asking you to fill out the captcha and try again. You can change or translate the error messages used by the module through the [ProcessWire's site translation system](https://processwire.com/docs/multi-language-support/).
+6. If the verification is failing server-side even though you completed the captcha challenge, check the log file (*Setup -> Logs -> hcaptcha*). The module logs the error codes returned by the API when validation fails.
 
 ## API usage
 
