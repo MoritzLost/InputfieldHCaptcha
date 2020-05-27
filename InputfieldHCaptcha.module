@@ -108,7 +108,7 @@ class InputfieldHCaptcha extends Inputfield
      */
     public function getAttributes(): array
     {
-        $sitekey = $this->wire('config')->get(self::CONFIG_NAME_SITE_KEY) ?: $this->get('sitekey');
+        $sitekey = $this->hCaptchaSiteKey();
         return [
             'class' => 'h-captcha',
             'data-sitekey' => $sitekey,
@@ -166,12 +166,12 @@ class InputfieldHCaptcha extends Inputfield
         if ($success) {
             $this->value = sprintf($this->_('Passed hCaptcha verification at %s'), $timestamp);
         } else {
-            $errors = isset($result['error-codes']) ? $result['error-codes'] : [$this->_('(not provided)')];
             $this->value = sprintf(
                 $this->_('Failed hCaptcha verification at %s'),
                 $timestamp
             );
-            $this->error($this->_('Failed hCaptcha verification. Please try again or contact the administrator if the problem persists.'));
+            $this->error($this->_('Failed hCaptcha verification. Please fill out the captcha and try again.'));
+            $errors = isset($result['error-codes']) ? $result['error-codes'] : ['(not provided)'];
             $this->wire('log')->save(self::LOG_NAME, sprintf(
                 'Failed hCaptcha verification with error code(s): %s',
                 implode(', ', $errors)
@@ -210,7 +210,7 @@ class InputfieldHCaptcha extends Inputfield
             $secretKey->collapsed = Inputfield::collapsedNoLocked;
             $secretKey->notes = $this->_('This field is disabled because the secret key is provided through a `$config` variable.');
         } else {
-            $secretKey->notes = sprintf($this->_('You can set the secret key here, or through the config like this: `$config->%s = "your-site-key"`'), self::CONFIG_NAME_SECRET_KEY);
+            $secretKey->notes = sprintf($this->_('You can set the secret key here, or through the config like this: `$config->%s = "your-secret-key"`'), self::CONFIG_NAME_SECRET_KEY);
             $secretKey->set('required', 1);
         }
         $fields->append($secretKey);
