@@ -29,7 +29,7 @@ class InputfieldHCaptcha extends Inputfield
             'summary' => __('Inputfield wrapper for the hCaptcha captcha provider.'),
             'author' => "Moritz L'Hoest",
             'href' => 'https://github.com/MoritzLost/InputfieldHCaptcha',
-            'version' => '0.1.0',
+            'version' => '1.0.0',
             'icon' => 'check-square',
             'autoload' => false,
             'singular' => false,
