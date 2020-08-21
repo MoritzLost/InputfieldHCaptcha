@@ -29,7 +29,7 @@ class InputfieldHCaptcha extends Inputfield
             'summary' => __('Inputfield wrapper for the hCaptcha captcha provider.'),
             'author' => "Moritz L'Hoest",
             'href' => 'https://github.com/MoritzLost/InputfieldHCaptcha',
-            'version' => '1.0.0',
+            'version' => '1.0.1',
             'icon' => 'check-square',
             'autoload' => false,
             'singular' => false,
@@ -46,8 +46,12 @@ class InputfieldHCaptcha extends Inputfield
     */
     public function ___render()
     {
-        // don't render the label if that option is clicked
-        $this->set('skipLabel', $this->get('hideLabel') ? Inputfield::skipLabelMarkup : Inputfield::skipLabelFor);
+        // fall back to Inputfield::skipLabelHeader for ProcessWire <3.0.139
+        $skipLabelProperty = defined('ProcessWire\\Inputfield::skipLabelMarkup')
+            ? Inputfield::skipLabelMarkup
+            : Inputfield::skipLabelHeader;
+        // don't render the label if that option is active
+        $this->set('skipLabel', $this->get('hideLabel') ? $skipLabelProperty : Inputfield::skipLabelFor);
         $output = '';
         // the hCaptcha script should be added only once, so we check this through a static property
         // @TODO: this might not work in all situations, maybe make this configurable through the module?
