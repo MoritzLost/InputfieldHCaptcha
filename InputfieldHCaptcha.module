@@ -29,7 +29,7 @@ class InputfieldHCaptcha extends Inputfield
             'summary' => __('Inputfield wrapper for the hCaptcha captcha provider.'),
             'author' => "Moritz L'Hoest",
             'href' => 'https://github.com/MoritzLost/InputfieldHCaptcha',
-            'version' => '1.0.2',
+            'version' => '1.0.3',
             'icon' => 'check-square',
             'autoload' => false,
             'singular' => false,
@@ -150,7 +150,7 @@ class InputfieldHCaptcha extends Inputfield
         $verifyRequest = new WireHttp();
         // use curl in PW 3.0.167+ and fopen / socket otherwise, @see https://github.com/processwire/processwire/pull/179
         $useCurl = function_exists('curl_init') && !ini_get('safe_mode') && wire('config')->version('3.0.167');
-        $options = $useCurl ? ['use' => 'curl', 'fallback' => false] : ['use' => 'fopen', 'fallback' => 'socket'];
+        $options = $useCurl ? ['use' => 'curl', 'fallback' => false] : ['use' => 'auto', 'fallback' => 'socket'];
         // include hcaptcha secret, captcha response and optionally the IP address in the request
         $postData = [
             'response' => $hCaptchaResponse,
