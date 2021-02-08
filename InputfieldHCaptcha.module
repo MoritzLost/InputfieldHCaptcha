@@ -29,7 +29,7 @@ class InputfieldHCaptcha extends Inputfield
             'summary' => __('Inputfield wrapper for the hCaptcha captcha provider.'),
             'author' => "Moritz L'Hoest",
             'href' => 'https://github.com/MoritzLost/InputfieldHCaptcha',
-            'version' => '1.0.1',
+            'version' => '1.0.2',
             'icon' => 'check-square',
             'autoload' => false,
             'singular' => false,
@@ -148,6 +148,10 @@ class InputfieldHCaptcha extends Inputfield
         }
 
         $verifyRequest = new WireHttp();
+        // use curl in PW 3.0.167+ and fopen / socket otherwise, @see https://github.com/processwire/processwire/pull/179
+        $useCurl = function_exists('curl_init') && !ini_get('safe_mode') && wire('config')->version('3.0.167');
+        $options = $useCurl ? ['use' => 'curl', 'fallback' => false] : ['use' => 'fopen', 'fallback' => 'socket'];
+        // include hcaptcha secret, captcha response and optionally the IP address in the request
         $postData = [
             'response' => $hCaptchaResponse,
             'secret' => $hCaptchaSecret,
@@ -155,7 +159,16 @@ class InputfieldHCaptcha extends Inputfield
         if ($this->get('includeIp')) {
             $postData['remoteip'] = $this->wire('session')->getIp();
         }
-        $apiResponse = $verifyRequest->post(self::HCAPTCHA_ENDPOINT, $postData);
+        // It's important that the post data is passed as a URL-encoded string
+        // to WireHttp. When using cURL, WireHttp uses CURLOPT_POSTFIELDS to
+        // pass the data to cURL. If the data is an array, cURL automatically
+        // sets the Content-Type to multipart/form-data, but the hCaptcha API
+        // requires application/x-www-form-urlencoded. By passing the data as a
+        // string, cURL is forced to send it as-is with the existing Content-Type.
+        $postDataEncoded = http_build_query($postData);
+        $verifyRequest->setHeader('content-type', 'application/x-www-form-urlencoded');
+        // send the request and check the result
+        $apiResponse = $verifyRequest->post(self::HCAPTCHA_ENDPOINT, $postDataEncoded, $options);
         $result = json_decode($apiResponse, true);
 
         if (!$result || !is_array($result)) {
