@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.4] - 2021-08-11
+
+- **Bugfix:** Fix a typo in the default error message for a missing captcha response. Make sure to update your translations!
+    - **Before**: Captcha reponse is missing. Please fill out the captcha and try again.
+    - **After:** Captcha re<ins>s</ins>ponse is missing. Please fill out the captcha and try again.
+
 ## [1.0.3] - 2021-02-08
 
 - **Bugfix:** Change method for WireHttp::send for non-cURL environments from 'fopen' to 'auto', since this allows WireHttp to fall back to socket if fopen is not supported.

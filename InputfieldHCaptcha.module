@@ -29,7 +29,7 @@ class InputfieldHCaptcha extends Inputfield
             'summary' => __('Inputfield wrapper for the hCaptcha captcha provider.'),
             'author' => "Moritz L'Hoest",
             'href' => 'https://github.com/MoritzLost/InputfieldHCaptcha',
-            'version' => '1.0.3',
+            'version' => '1.0.4',
             'icon' => 'check-square',
             'autoload' => false,
             'singular' => false,
@@ -143,7 +143,7 @@ class InputfieldHCaptcha extends Inputfield
 
         $hCaptchaResponse = isset($input[self::HCAPTCHA_POST_KEY]) ? $input[self::HCAPTCHA_POST_KEY] : null;
         if (!$hCaptchaResponse) {
-            $this->error($this->_('Captcha reponse is missing. Please fill out the captcha and try again.'));
+            $this->error($this->_('Captcha response is missing. Please fill out the captcha and try again.'));
             return $this;
         }
 
