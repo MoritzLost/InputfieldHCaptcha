@@ -19,6 +19,12 @@ $config->hCaptchaSecretKey = '0x0000000000000000000000000000000000000000';
 $config->hCaptchaSiteKey = '10000000-ffff-ffff-ffff-000000000001';
 ```
 
+## Permissions
+
+The module comes with a permission (`bypass-hcaptcha`) that allows users to bypass hCaptcha verification completely. The widget will be hidden for users with that permission and the server-side verification will not take place.
+
+**Warning**: As the superuser, you will never see the hCaptcha widget, because the superuser passes all permission checks. Make sure to test the widget in a different browser or a private browser window.
+
 ## Setup for Form Builder
 
 The most common use case for this module is as a bot / spam protection in frontend forms built with [Form Builder](https://processwire.com/store/form-builder/).
