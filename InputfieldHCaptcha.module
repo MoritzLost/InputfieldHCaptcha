@@ -19,6 +19,9 @@ class InputfieldHCaptcha extends Inputfield
     /** @var string Configuration name for the hCaptcha site key. */
     public const CONFIG_NAME_SITE_KEY = 'hCaptchaSiteKey';
 
+    /** @var string Name of the permission allowing users to bypass hCaptcha completely. */
+    public const PERMISSION_BYPASS = 'bypass-hcaptcha';
+
     /** @var string Static variable to keep track of whether the hCaptcha script was included already. */
     public static $hCaptchaScriptAdded = false;
 
@@ -36,6 +39,9 @@ class InputfieldHCaptcha extends Inputfield
             'requires' => [
                 'PHP>=7.2',
             ],
+            'permissions' => [
+                'bypass-hcaptcha' => 'Bypass hCaptcha verification. The hCaptcha widget will never be displayed for users with this permission.'
+            ],
         ];
     }
 
@@ -50,6 +56,12 @@ class InputfieldHCaptcha extends Inputfield
         $skipLabelProperty = defined('ProcessWire\\Inputfield::skipLabelMarkup')
             ? Inputfield::skipLabelMarkup
             : Inputfield::skipLabelHeader;
+
+        if ($this->wire('user')->hasPermission(self::PERMISSION_BYPASS)) {
+            $this->set('skipLabel', $skipLabelProperty);
+            return '';
+        };
+
         // don't render the label if that option is active
         $this->set('skipLabel', $this->get('hideLabel') ? $skipLabelProperty : Inputfield::skipLabelFor);
         $output = '';
@@ -135,6 +147,14 @@ class InputfieldHCaptcha extends Inputfield
     */
     public function ___processInput(WireInputData $input)
     {
+        if ($this->wire('user')->hasPermission(self::PERMISSION_BYPASS)) {
+            $this->value = sprintf(
+                $this->_('Skipping hCaptcha validation because the current user has the permission to bypass hCaptcha. Time: %s'),
+                date(\DATE_ATOM)
+            );
+            return $this;
+        }
+
         $hCaptchaSecret = $this->hCaptchaSecretKey();
         if (!$hCaptchaSecret) {
             $this->error($this->_('hCaptcha secret key is missing.'));
