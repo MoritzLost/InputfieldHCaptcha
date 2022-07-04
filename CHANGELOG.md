@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+- **Feature:** Add a permission to bypass hCaptcha completely. See the [documentation](README.md#permissions) for details.
+    - If you're upgrading from an earlier version of the module, you may need to add the permission manually. Go to _Access -> Permissions -> Add new_ and add a permission with the name `bypass-hcaptcha`.
+
 ## [1.0.4] - 2021-08-11
 
 - **Bugfix:** Fix a typo in the default error message for a missing captcha response. Make sure to update your translations!
