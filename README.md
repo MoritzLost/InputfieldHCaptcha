@@ -36,6 +36,8 @@ The most common use case for this module is as a bot / spam protection in fronte
 5. Now fill out the form in the frontend and try submitting it without filling out the captcha. You should see an error message asking you to fill out the captcha and try again. You can change or translate the error messages used by the module through [ProcessWire's site translation system](https://processwire.com/docs/multi-language-support/).
 6. If the verification is failing server-side even though you completed the captcha challenge, check the log file (*Setup -> Logs -> hcaptcha*). The module logs the error codes returned by the API when validation fails.
 
+**Note for Embed Option D:** If you're using _Option D: Custom Markup Embed_, you have to adjust the generated template. [See this comment for details.](https://processwire.com/talk/topic/23769-hcaptcha-spam-protection-for-processwire-forms/?do=findComment&comment=231976)
+
 ## API usage
 
 You can create and configure hCaptcha inputfields programmatically:
