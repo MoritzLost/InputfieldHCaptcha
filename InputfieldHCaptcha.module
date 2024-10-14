@@ -125,16 +125,21 @@ class InputfieldHCaptcha extends Inputfield
     public function getAttributes(): array
     {
         $sitekey = $this->hCaptchaSiteKey();
-        return [
-            'class' => 'h-captcha',
-            'data-sitekey' => $sitekey,
-            'data-theme' => $this->get('theme'),
-            'data-size' => $this->get('size'),
-            'data-tabindex' => (int) $this->get('tabindex'),
-            'data-callback' => $this->get('data-callback'),
-            'data-expired-callback' => $this->get('data-expired-callback'),
-            'data-error-callback' => $this->get('data-error-callback'),
-        ];
+        return array_filter(
+            [
+                'class' => 'h-captcha',
+                'data-sitekey' => $sitekey,
+                'data-theme' => $this->get('theme'),
+                'data-size' => $this->get('size'),
+                'data-tabindex' => (int) $this->get('tabindex'),
+                'data-callback' => $this->get('data-callback'),
+                'data-expired-callback' => $this->get('data-expired-callback'),
+                'data-error-callback' => $this->get('data-error-callback'),
+            ],
+            function ($value) {
+                return $value !== null;
+            }
+        );
     }
 
     /**
