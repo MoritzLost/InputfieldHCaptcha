@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.1] - 2024-10-14
+
+- **Bugfix:** Fix PHP warnings regarding the usage of `htmlspecialchars`.
+
 ## [2.0.0] - 2022-07-18
 
 - **Feature:** Add a permission to bypass hCaptcha completely. See the [documentation](README.md#permissions) for details.
